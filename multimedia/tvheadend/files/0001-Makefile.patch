@@ -1,0 +1,16 @@
+-z is an unknown option for ld on MacOS
+
+diff --git a/Makefile b/Makefile
+index 4e5a947a3..aeba57cf3 100644
+--- a/Makefile
++++ b/Makefile
+@@ -65,7 +65,9 @@ endif
+ ifeq ($(CONFIG_PIE),yes)
+ LDFLAGS += -pie
+ endif
++ifneq ($(PLATFORM),darwin)
+ LDFLAGS += -Wl,-z,now
++endif
+ ifeq ($(CONFIG_LIBICONV),yes)
+ LDFLAGS += -liconv
+ endif

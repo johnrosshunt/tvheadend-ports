@@ -1,0 +1,85 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           muniversal 1.0
+
+name                hdhomerun-devel
+conflicts           hdhomerun
+version             20220128
+categories          net multimedia
+platforms           darwin
+license             LGPL-3+
+maintainers         {gmail.com:johnrosshunt} openmaintainer
+description         HDHomeRun device configuration utility
+homepage            https://www.silicondust.com/
+
+master_sites        http://download.silicondust.com/hdhomerun
+
+if {${name} eq ${subport}} {
+    long_description    Provides a library and utility program to access, configure and test \
+                        HDHomeRun network tuner devices from SiliconDust.  May also be used to \
+                        upgrade firmware. Command line-driven and scriptable.
+
+    distname            libhdhomerun_${version}
+    extract.suffix      .tgz
+    extract.only        ${distname}${extract.suffix}
+    worksrcdir          libhdhomerun
+    checksums           rmd160  abd8e4a8f8e0fcd44839795e0d29e4e3527ffa00 \
+                        sha256  deaf463bbcc3eefa72f97199efb6213f7b0e2c8e91f1b3d2cbf52056a8715d15 \
+                        size    51124
+
+    patchfiles          patch-01-Makefile-cflags_libpath.diff patch-02-libhdhomerun-pc.diff
+    patch.args          -p1
+    post-patch {
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/Makefile
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/libhdhomerun.pc
+        reinplace "s|@VERSION@|${version}|g" ${worksrcpath}/libhdhomerun.pc
+    }
+
+    use_configure       no
+ 
+    build.args-append   CC=${configure.cc} \
+                        CXX=${configure.cxx} \
+                        CPP=${configure.cpp}
+
+    if {![info exists universal_possible]} {
+        set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+    }
+    if {${universal_possible} && [variant_isset universal]} {
+        foreach arch ${universal_archs_supported} {
+            lappend merger_build_env(${arch}) \
+                        "CFLAGS=${configure.cflags} [muniversal_get_arch_flag ${arch}]"
+        }
+    } else {
+        build.env-append \
+                        "CFLAGS=${configure.cflags} [get_canonical_archflags cc]"
+    }
+
+    destroot {
+        xinstall -m 0755 ${worksrcpath}/hdhomerun_config \
+            ${destroot}${prefix}/bin/hdhomerun_config
+        xinstall -m 0755 ${worksrcpath}/libhdhomerun.dylib \
+            ${destroot}${prefix}/lib/libhdhomerun.dylib
+        xinstall -d -m 0755 ${destroot}${prefix}/include/libhdhomerun/
+        xinstall -m 0644 -W ${worksrcpath} \
+                hdhomerun.h hdhomerun_os.h hdhomerun_os_posix.h \
+                hdhomerun_types.h hdhomerun_pkt.h hdhomerun_sock.h \
+                hdhomerun_debug.h hdhomerun_discover.h hdhomerun_control.h \
+                hdhomerun_video.h hdhomerun_channels.h hdhomerun_channelscan.h \
+                hdhomerun_device.h hdhomerun_device_selector.h \
+            ${destroot}${prefix}/include/libhdhomerun/
+        xinstall -d -m 0755 ${destroot}${prefix}/share/hdhomerun/
+        xinstall -d -m 0755 ${destroot}${prefix}/share/doc/hdhomerun/
+        xinstall -m 0644 ${worksrcpath}/README.md \
+            ${destroot}${prefix}/share/doc/hdhomerun/README.md
+        xinstall -d -m 0755 ${destroot}${prefix}/lib/pkgconfig/
+        xinstall -m 0644 ${worksrcpath}/libhdhomerun.pc \
+            ${destroot}${prefix}/lib/pkgconfig/libhdhomerun.pc
+    }
+    livecheck.type      regex
+    livecheck.url       http://www.silicondust.com/support/hdhomerun/downloads/
+    livecheck.regex     Current release: (\[0-9\]+)
+}
+
+notes "Up to date device firmware is available from:\n\
+\thttps://www.silicondust.com/support/linux/"

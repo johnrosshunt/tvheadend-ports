@@ -1,0 +1,31 @@
+fdatasync on MacOS is undocumented and appears to have a different
+set of parameters than BSD/Linux systems. This is why CONFIG_FDATASYNC
+could be set and yet the compiler emits an implicit reference error.
+
+I think the sensible solution is avoid definition checks on
+Darwin and call fcntl (as Apple recommands) because what
+fdatasync actually does is unknown.
+
+See:
+
+https://www.postgresql.org/message-id/CA%2BhUKGLfe_ogA5VDi1Jxj_MPVJLcif8T_GuaW0aOs%2BpBZT033A%40mail.gmail.com
+
+diff --git a/src/muxer.c b/src/muxer.c
+index bbf189c46..04844a873 100644
+--- a/src/muxer.c
++++ b/src/muxer.c
+@@ -30,13 +30,11 @@
+ #endif
+ 
+ /* Newer platforms such as FreeBSD 11.1 support fdatasync so only alias on older systems */
+-#ifndef CONFIG_FDATASYNC
+ #if defined(PLATFORM_DARWIN)
+ #define fdatasync(fd)       fcntl(fd, F_FULLFSYNC)
+-#elif defined(PLATFORM_FREEBSD)
++#elif defined(PLATFORM_FREEBSD) && !defined(CONFIG_FDATASYNC)
+ #define fdatasync(fd)       fsync(fd)
+ #endif
+-#endif
+ 
+ /**
+  * Mime type for containers containing only audio

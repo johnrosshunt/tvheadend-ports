@@ -1,0 +1,22 @@
+This patch is optional and can be safely omitted.
+I added a pkg-config file to libhdhomerun so it
+would be easier to check the installed version.
+
+diff --git a/configure b/configure
+index c087502bf..f0dc26ae7 100755
+--- a/configure
++++ b/configure
+@@ -432,9 +432,10 @@ if enabled hdhomerun_static; then
+ else
+ 
+   if enabled_or_auto hdhomerun_client; then
+-    if check_cc_header 'libhdhomerun/hdhomerun' libhdhomerun; then
+-      enable  hdhomerun_client
+-      LDFLAGS="$LDFLAGS -lhdhomerun"
++    if check_pkg libhdhomerun; then
++      enable hdhomerun_client
++    elif enabled hdhomerun_client; then
++      die "libhdhomerun not found (use --disable-hdhomerun_client)"
+     fi
+   fi
+ 

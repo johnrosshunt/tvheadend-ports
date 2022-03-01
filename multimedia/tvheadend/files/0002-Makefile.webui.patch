@@ -1,0 +1,15 @@
+BSD stat comes with MacOS.
+
+diff --git a/Makefile.webui b/Makefile.webui
+index c0465fe0e..d08364186 100644
+--- a/Makefile.webui
++++ b/Makefile.webui
+@@ -45,7 +45,7 @@ else
+ DEBUG = -debug
+ endif
+ 
+-ifeq ($(PLATFORM), freebsd)
++ifeq ($(PLATFORM), $(filter $(PLATFORM), freebsd darwin))
+ STAT_ARG=-f "%-35N %7z"
+ else
+ STAT_ARG=--printf="%-35n %7s\n"

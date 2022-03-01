@@ -1,0 +1,343 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           active_variants 1.1
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           legacysupport 1.1
+PortGroup           muniversal 1.0
+
+# clock_gettime was not implemented before macOS Sierra
+legacysupport.newest_darwin_requires_legacy 15
+
+set tvh_commit      1295dd2be863f5beb764290fce9317b24193dfc0
+set tvh_commit_date 20220214
+set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
+
+github.setup        tvheadend tvheadend ${tvh_commit}
+version             ${tvh_version}
+revision            2
+# Makefile requires a git checkout
+fetch.type          git
+
+name                ${github.project}
+
+categories          multimedia
+platforms           darwin
+license             GPL-3
+
+maintainers         {gmail.com:johnrosshunt} openmaintainer
+
+description         Tvheadend is a TV streaming server and digital video recorder.
+long_description    ${description} \
+                    \n - supports a variety of inputs (DVB-S(2)/T(2)/C, ISDB-S/T/C, ATSC-T/C, IPTV, SAT>IP, HDHR) \
+                    \n - supports a variety of clients (Movian, Smart TV, Kodi, VLC)
+
+homepage            https://tvheadend.org/
+
+patch.pre_args      -p1
+patchfiles-append   0001-Makefile.patch \
+                    0002-Makefile.webui.patch \
+                    0003-be64toh-undefined.patch \
+                    0004-fdatasync.patch \
+                    0005-configure.patch \
+                    0006-bonjour-printf.patch \
+                    0007-tcp-recv.patch
+
+# python versions
+set cur_branch      3.10
+set cur_version     310
+
+post-patch {
+    foreach f [concat ${worksrcpath}/support/tvhmeta \
+                      ${worksrcpath}/lib/py/tvh/tv_meta_tmdb.py \
+                      ${worksrcpath}/lib/py/tvh/tv_meta_tvdb.py] {
+        reinplace -q -E "s|^(#!\[\[:blank:\]\]?)(/usr/bin/env\[\[:blank:\]\]?)?(.*python3)$|\\1\\2${prefix}/bin/python${cur_branch}|g" ${f}
+    }
+
+    # oh my, this is ugly...
+    if {[info exists patched_sdkroot]} {
+        ui_msg "--->  Copying MacOSX${configure.sdk_version}.sdk to work directory..."
+        system -W ${worksrcpath} \
+                    "cp -R ${configure.sdkroot}/ ${patched_sdkroot}/"
+        reinplace -W ${patched_sdkroot} \
+            "s|static const size_t kAuthorizationExternalFormLength = 32;|enum { kAuthorizationExternalFormLength = 32 };|g" \
+            System/Library/Frameworks/Security.framework/Versions/A/Headers/Authorization.h
+    }
+}
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:cmake
+
+depends_lib-append  port:bzip2 \
+                    port:dav1d \
+                    port:dbus \
+                    port:ffmpeg \
+                    port:gettext \
+                    port:git \
+                    port:hdhomerun-devel \
+                    port:lame \
+                    port:libass \
+                    port:libbluray \
+                    port:libdvbcsa \
+                    port:libiconv \
+                    port:libmodplug \
+                    port:libogg \
+                    port:libopus \
+                    port:libtheora \
+                    port:libvorbis \
+                    port:libvpx \
+                    port:pcre2 \
+                    port:realpath \
+                    port:soxr \
+                    port:speex \
+                    port:uriparser \
+                    port:wget \
+                    port:x264 \
+                    port:x265 \
+                    port:xz \
+                    port:zlib \
+                    port:python${cur_version} \
+                    port:py${cur_version}-requests \
+                    path:lib/libssl.dylib:openssl
+
+# pkill needed for Mac OS X <= Lion
+if {${os.major} <= 11} {
+    depends_lib-append \
+                    port:proctools
+}
+
+# llvm+clang 9 or greater is needed link properly with gcc
+catch {exec bash -c "ld -v 2>&1 | sed -ne \"s/^.*LLVM version \\(\[0-9\]*\\).*/\\1/p\""} llvm_major
+if {${llvm_major} < 9 || ${llvm_major} == ""} {
+    depends_build-append \
+                    port:clang-9.0
+}
+
+# a single local function forces us to use gcc
+compiler.whitelist  macports-gcc-7 macports-gcc-6
+if {${os.major} >= 10} {
+    foreach ver {8 9 10} {
+        compiler.whitelist-prepend \
+                    macports-gcc-${ver}
+    }
+    if {${os.major} >= 21} {
+        compiler.whitelist-prepend \
+                    macports-gcc-11
+    }
+}
+
+# determine SDK version
+set sdk_major       [lindex [split ${configure.sdk_version} "."] 0]
+set sdk_minor       [lindex [split ${configure.sdk_version} "."] 1]
+set sdk_minor       [expr {${sdk_minor} == {} ? 0 : ${sdk_minor}}]
+
+# macOS SDKs >= 10.12 need to patched
+if {${sdk_major} == 10 && ${sdk_minor} >= 12 || ${sdk_major} >= 11} {
+    set patched_sdkroot \
+                    ${worksrcpath}/MacOSX${configure.sdk_version}.sdk
+}
+
+# set up include path
+configure.cppflags  -isystem${prefix}/include
+
+# figure out how to handle the sdkroot
+if {[info exists patched_sdkroot]} {
+    configure.cppflags-append \
+                    -isysroot${patched_sdkroot}
+} elseif {${configure.sdkroot} != ""} {
+    configure.cppflags-append \
+                    -isysroot${configure.sdkroot}
+} elseif {${os.major} > 10} {
+    configure.cppflags-append \
+                    -isysroot/
+} else {
+    # older systems require Mac OS X 10.7 SDK to be present
+    catch {exec bash -c "xcodebuild -version -sdk macosx SDKVersion 2>/dev/null | head -1"} sdkver
+    if {${sdkver} == "10.7"} {
+        configure.cppflags-append \
+                    -isysroot${developer_dir}/SDKs/MacOSX${sdkver}.sdk
+    } else {
+        pre-fetch {
+            error "Building ${name} on Mac OS X 10.6 requires the MacOSX10.7.sdk to be present in ${developer_dir}/SDKs/"
+        }
+    }
+}
+
+configure.args      --platform=${os.platform} \
+                    --cc=${configure.cc} \
+                    --ldflags="${configure.ldflags}" \
+                    --python=python${cur_branch} \
+                    --disable-ccache \
+                    --enable-tvhcsa \
+                    --enable-hdhomerun_client \
+                    --disable-hdhomerun_static \
+                    --enable-libav \
+                    --disable-ffmpeg_static \
+                    --disable-libx264_static \
+                    --disable-libx265_static \
+                    --disable-libvpx_static \
+                    --disable-libtheora_static \
+                    --disable-libvorbis_static \
+                    --disable-libfdkaac \
+                    --disable-libfdkaac_static \
+                    --disable-libopus_static
+
+# Mac OS X <= Leopard or Monterey will have to live with some warnings
+if {${os.major} <= 9 || ${os.major} >= 21} {
+    configure.args-append \
+                    --nowerror
+}
+
+# silence some useless compiler warnings
+configure.cflags-append \
+                    -Wno-format-truncation
+configure.cflags-append \
+                    -Wno-unused-but-set-variable
+
+# support universal binaries
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+if {${universal_possible} && [variant_isset universal]} {
+    foreach arch ${universal_archs_supported} {
+        lappend merger_configure_args(${arch}) \
+                    --arch=${arch} \
+                    --cflags="${configure.cppflags} ${configure.cflags} -arch ${arch}"
+    }
+} else {
+    configure.args-append \
+                    --arch=${build_arch} \
+                    --cflags="${configure.cppflags} ${configure.cflags} -arch ${build_arch}"
+}
+
+set hts_user        hts
+set hts_group       hts
+
+set homedir         ${prefix}/var/lib/${name}
+set docdir          ${prefix}/share/doc/${name}
+
+add_users           ${hts_user} \
+                    group=${hts_group} \
+                    shell=/bin/bash \
+                    home=${homedir} \
+                    realname=Tvheadend\ -\ a\ TV\ streaming\ server\ and\ DVR
+
+startupitem.create  yes
+startupitem.init    "TVHEADEND=${prefix}/bin/${name}"
+# note: EPG grabbers are expected to be in the PATH
+startupitem.start   "su ${hts_user} -c \"env PATH=${prefix}/bin:/usr/bin:/bin:/usr/sbin:/sbin \${TVHEADEND} -f -u ${hts_user} -g ${hts_group}\""
+startupitem.stop    "su ${hts_user} -c \"pkill -U ${hts_user} ${name}\""
+
+destroot.keepdirs   ${destroot}${homedir}/.hts/${name}
+
+post-destroot {
+    xinstall -d -m 0755 ${destroot}${homedir}/.hts/${name}
+    xinstall -d -m 0755 ${destroot}${docdir}
+    xinstall -m 0644 -W ${worksrcpath} LICENSE.md README.md debian/copyright ${destroot}${docdir}
+}
+
+post-activate {
+    file attributes ${homedir} -group ${hts_group} -owner ${hts_user}
+    file attributes ${homedir}/.hts -group ${hts_group} -owner ${hts_user}
+    file attributes ${homedir}/.hts/${name} -group ${hts_group} -owner ${hts_user}
+}
+
+if {![variant_isset superuser]} {
+    notes-append [subst \
+        {
+            For the first run, it\'s recommended to start the daemon manually
+            with the \"-C\" option and create an admin user BEFORE launching
+            the daemon normally (i.e. sudo port load ${name}).
+
+            The first run can be started manually from the command line with:
+
+            cd ${homedir} ; sudo su ${hts_user} -c \"${prefix}/bin/${name} -C -f -u ${hts_user} -g ${hts_group}\"
+
+            And can be stopped manually from the command line with:
+
+            cd ${homedir} ; sudo su hts -c \"pkill -U ${hts_user} ${name}\"
+        }
+    ]
+}
+
+notes-append [subst \
+    {
+        If the built in firewall is active, click \"allow\" at the prompt
+        to enable access through the firewall.
+    }
+]
+
+variant superuser \
+    description "Add a superuser to ${name} with a default username/password" {
+
+    post-destroot {
+        xinstall -m 0600 -W ${filespath} superuser ${destroot}${homedir}/.hts/${name}
+    }
+    post-activate {
+        file attributes ${homedir}/.hts/${name}/superuser -group ${hts_group} -owner ${hts_user}
+    }
+    notes-append [subst \
+        {
+            A superuser with a username/password of \"admin/admin\" has been installed at:
+
+            ${homedir}/.hts/${name}/superuser
+
+            It is recommended you edit this file and change the values to something more
+            secure before running ${name}.
+        }
+    ]
+}
+
+variant nonfree \
+    description "Build with Fraunhofer FDK AAC Codec Library" {
+
+    require_active_variants ffmpeg nonfree
+    configure.args-replace --disable-libfdkaac --enable-libfdkaac
+    depends_lib-append port:libfdk-aac
+}
+
+variant xmltv \
+    description "Install EPG grabbers for xmltv" {
+
+    require_active_variants xmltv perl5_34
+    depends_lib-append port:xmltv
+}
+
+variant tv_grab_file \
+    description "A simple grabber that loads EPG data from a file" {
+
+    depends_lib-append port:tv_grab_file
+}
+
+variant addmuxes \
+    description "A simple script to create muxes from a CableCARD lineup" {
+
+    depends_lib-append port:curl port:jq
+
+    post-destroot {
+        xinstall -m 0755 -W ${filespath} addmuxes ${destroot}${prefix}/bin
+    }
+}
+
+variant native_cpu \
+    description "Build and optimize for native CPU" {
+
+    set build_cpu native
+
+    # allow the user to set a custom cpu on the command line
+    if {[info exists configure.build_cpu]} {
+        set build_cpu ${configure.build_cpu}
+    }
+
+    if {${universal_possible} && [variant_isset universal]} {
+        foreach arch ${universal_archs_supported} {
+            lappend merger_configure_args(${arch}) --cpu=${build_cpu}
+        }
+    } else {
+        configure.args-append --cpu=${build_cpu}
+    }
+}
+
+livecheck.url       ${github.homepage}/commits/${github.livecheck.branch}.atom

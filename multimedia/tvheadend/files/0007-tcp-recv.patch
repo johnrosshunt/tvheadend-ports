@@ -1,0 +1,16 @@
+recv call on MacOS is identical to BSD systems. Fixes 'client hung up'
+errors when streaming on the web ui.
+
+diff --git a/src/tcp.c b/src/tcp.c
+index 6a21bab96..cbfe2ef13 100644
+--- a/src/tcp.c
++++ b/src/tcp.c
+@@ -444,7 +444,7 @@ tcp_socket_dead(int fd)
+     return -errno;
+   if (err)
+     return -err;
+-#ifdef PLATFORM_FREEBSD
++#if defined(PLATFORM_FREEBSD) || defined(PLATFORM_DARWIN)
+   if (recv(fd, NULL, 0, MSG_PEEK | MSG_DONTWAIT) < 0)
+     return -errno;
+ #else

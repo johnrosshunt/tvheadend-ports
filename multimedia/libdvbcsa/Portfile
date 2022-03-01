@@ -1,0 +1,144 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           muniversal 1.0
+
+github.setup        glenvt18 libdvbcsa 2a1e61e569a621c55c2426f235f42c2398b7f18f
+version             20180128
+revision            4
+
+# only tlsv1 available for OS < Mavericks
+if {${os.major} < 12} {
+    fetch.type      git
+}
+
+name                ${github.project}
+
+categories          multimedia
+platforms           darwin
+license             GPL-2
+
+maintainers         {gmail.com:johnrosshunt} openmaintainer
+
+description         DVB Common Scrambling algorithm library.
+long_description    libdvbcsa is a free and portable implementation of the DVB Common \
+                    Scrambling algorithm with decryption and encryption capabilities. \
+                    It comes in two flavors: a classical single packet implementation \
+                    and a faster parallel bitslice implementation.
+
+homepage            ${github.homepage}
+
+checksums           rmd160  69721f81cbf76bb1c469bd8f2ee5b76ecd15b55f \
+                    sha256  0341b2a805ef3d0413929156d0daca84792db551c5a7fe630130b10bb0f778d4 \
+                    size    45827
+
+patchfiles          0001-bootstrap.patch
+patch.args          -p1
+post-patch {
+    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/bootstrap
+}
+
+depends_lib-append \
+                    port:autoconf \
+                    port:automake \
+                    port:libtool
+
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+if {${universal_possible} && [variant_isset universal]} {
+    foreach arch ${universal_archs_supported} {
+        # note: build uses -O3
+        configure.cflags-delete "-Os"
+    }
+}
+
+use_autoconf        yes
+autoconf.cmd        autoupdate && ./bootstrap
+
+post-destroot {
+    set docdir ${prefix}/share/doc/${name}
+    xinstall -d -m 0755 ${destroot}${docdir}
+    xinstall -m 0644 -W ${worksrcpath} \
+        AUTHORS COPYING ChangeLog README \
+        ${destroot}${docdir}
+}
+
+if {${configure.build_arch} eq "i386" || ${configure.build_arch} eq "x86_64"} {
+    if {![catch {sysctl hw.cpu64bit_capable} result] && ${result} == 1} {
+        variant uint64 \
+        conflicts uint32 mmx sse2 ssse3 avx2 \
+        description "Use native 64 bits integers for bitslice" {
+            configure.args-append --enable-uint64
+        }
+    } else {
+        variant uint32 \
+        conflicts uint64 mmx sse2 ssse3 avx2 \
+        description "Use native 32 bits integers for bitslice" {
+            configure.args-append --enable-uint32
+        }
+    }
+}
+
+if {![catch {sysctl hw.optional.mmx} result] && ${result} == 1} {
+    variant mmx \
+        conflicts uint32 uint64 sse2 ssse3 avx2 \
+        description "Use MMX for bitslice" {
+        configure.args-append --enable-mmx
+    }
+}
+
+if {![catch {sysctl hw.optional.sse2} result] && ${result} == 1} {
+    variant sse2 \
+        conflicts uint32 uint64 mmx ssse3 avx2 \
+        description "Use SSE2 for bitslice" {
+        configure.args-append --enable-sse2
+    }
+}
+
+if {![catch {sysctl hw.optional.sse3} result] && ${result} == 1} {
+    # this is a sensible default for intel and compatible processors
+    default_variants +ssse3
+    variant ssse3 \
+        conflicts uint32 uint64 mmx sse2 avx2 \
+        description "Use SSSE3 for bitslice" {
+        configure.args-append --enable-ssse3
+    }
+}
+
+if {![catch {sysctl hw.optional.avx2_0} result] && ${result} == 1} {
+    variant avx2 \
+        conflicts uint32 uint64 mmx sse2 ssse3 \
+        description "Use AVX2 for bitslice" {
+        pre-fetch {
+            if {![avx_compiler_isset]} {
+            return -code error "$name: Variant avx2 needs a clang-derived compiler"
+            }
+        }
+        configure.args-append --enable-avx2
+    }
+}
+
+if {${configure.build_arch} eq "powerpc"} {
+    default_variants +altivec
+    variant altivec \
+        description "Use AltiVec for bitslice" {
+        configure.args-append --enable-altivec
+    }
+}
+
+if {${configure.build_arch} eq "arm64"} {
+    default_variants +neon
+    variant neon \
+        description "Use NEON for bitslice" {
+        configure.args-append --enable-neon
+    }
+}
+
+variant sbox \
+    description "Use alternative sbox lookup, may be faster on some targets" {
+    configure.args-append --enable-alt-sbox
+}
+
+livecheck.type  none

@@ -1,0 +1,50 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+
+github.setup        Rigolo tv-grab-file 18da28c63c7baa1c292d75142853eb60d8891a5f
+version             20150809
+revision            1
+
+# only tlsv1 available for OS < Mavericks
+if {${os.major} < 12} {
+    fetch.type      git
+}
+
+name                tv_grab_file
+
+categories          multimedia
+platforms           darwin
+license             public-domain
+
+maintainers         {gmail.com:johnrosshunt} openmaintainer
+
+description         Simple XML TV grabber to load a XML-TV file
+long_description    This XMLTV "grabber" is used to provide a way of loading a valid XMTV file \
+                    into any application that supports the various XMLTV grabbers. \
+                    It will respond to a small number of XMLTV options, just enough to \
+                    pass as a valid XMLTV grabber, and it will just pass a valid XMLTV file \
+                    to the requesting program.
+
+homepage            ${github.homepage}
+
+checksums           rmd160  f567b38a47ae8a3fe414c02a29ea322296177218 \
+                    sha256  ffdd83d8a9d62b8e9b5c4d6fedecac944d1d4543a8dc52be303c7bdbf03858d1 \
+                    size    960
+
+use_configure       no
+installs_libs       no
+build               {}
+
+destroot {
+    xinstall -m 0755 -W ${worksrcpath} ${name} ${destroot}${prefix}/bin
+}
+
+post-destroot {
+    set docdir ${prefix}/share/doc/${name}
+    xinstall -d -m 0755 ${destroot}${docdir}
+    xinstall -m 0644 -W ${worksrcpath} README.md ${destroot}${docdir}
+}
+
+livecheck.type      none

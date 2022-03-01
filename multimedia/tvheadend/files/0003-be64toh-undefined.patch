@@ -1,0 +1,22 @@
+Simple compatibility shims to convert BSD/Linux endian macros to
+the MacOS equivalents.
+
+See: https://gist.github.com/yinyin/2027912
+and: https://tvheadend.org/issues/4950
+
+diff --git a/src/descrambler/cccam.c b/src/descrambler/cccam.c
+index 28d44d456..abbfb2bdf 100644
+--- a/src/descrambler/cccam.c
++++ b/src/descrambler/cccam.c
+@@ -23,6 +23,11 @@
+ #include "tcp.h"
+ #include "cclient.h"
+ 
++#if defined(PLATFORM_DARWIN)
++#include <libkern/OSByteOrder.h>
++#define be64toh(x) OSSwapBigToHostInt64(x)
++#endif
++
+ /**
+  *
+  */

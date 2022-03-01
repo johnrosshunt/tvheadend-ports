@@ -1,0 +1,49 @@
+diff -urN a/bootstrap b/bootstrap
+--- a/bootstrap	2022-02-28 19:01:22.000000000 -0600
++++ b/bootstrap	2022-02-28 18:59:57.000000000 -0600
+@@ -33,14 +33,14 @@
+ # Check for automake
+ amvers="no"
+ for v in "-1.11" "-1.10" "110" "-1.9" "19" "-1.8" "18" "-1.7" "17" "-1.6" "16" "-1.5" "15"; do
+-  if automake${v} --version >/dev/null 2>&1; then
++  if @PREFIX@/bin/automake${v} --version >/dev/null 2>&1; then
+     amvers="${v}"
+     break
+   fi
+ done
+ 
+-if test "${amvers}" = "no" && automake --version > /dev/null 2>&1; then
+-  amvers="`automake --version | sed -nE '1s/[^0-9]*([0-9]+)\.([0-9]+).*/\1 * 100 + \2/p' | xargs expr`"
++if test "${amvers}" = "no" && @PREFIX@/bin/automake --version > /dev/null 2>&1; then
++  amvers="`@PREFIX@/bin/automake --version | sed -nE '1s/[^0-9]*([0-9]+)\.([0-9]+).*/\1 * 100 + \2/p' | xargs expr`"
+   if expr "$amvers" "<" "105" > /dev/null 2>&1; then
+     amvers="no"
+   else
+@@ -56,7 +56,7 @@
+ # Check for autoconf
+ acvers="no"
+ for v in "" "259" "253"; do
+-  if autoconf${v} --version >/dev/null 2>&1; then
++  if @PREFIX@/bin/autoconf${v} --version >/dev/null 2>&1; then
+     acvers="${v}"
+     break
+   fi
+@@ -109,14 +109,14 @@
+   fi
+ fi
+ 
+-aclocal${amvers} ${aclocalflags}
+-autoconf${acvers}
++@PREFIX@/bin/aclocal${amvers} ${aclocalflags}
++@PREFIX@/bin/autoconf${acvers}
+ if test "$header" = "yes"; then
+-  autoheader${acvers}
++  @PREFIX@/bin/autoheader${acvers}
+ fi
+ #add --include-deps if you want to bootstrap with any other compiler than gcc
+ #automake${amvers} --add-missing --copy --include-deps
+-automake${amvers} --foreign --add-missing --copy
++@PREFIX@/bin/automake${amvers} --foreign --add-missing --copy
+ 
+ # Remove cruft that we no longer want
+ rm -Rf autom4te.cache

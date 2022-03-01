@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Inspired by this thread: https://tvheadend.org/boards/5/topics/32813
+
+function print_usage ()
+{
+  printf "Usage: addmuxes <url> <user> <password> <network> <id>\n\n"
+  printf "where:\n\n"
+  printf "       url: is the tvheadend WebUI URL (e.g. http://localhost:9981)\n"
+  printf "      user: is the tvheadend administrator account\n"
+  printf "  password: is the administrator account password\n"
+  printf "   network: is the tvheadend network to use (created with: \"Configuration->DVB Inputs->Network->Add\")\n"
+  printf "        id: is the HDHomeRun Prime deviceID (found by: \"hdhomerun_config discover\")\n\n"
+  printf "Example:\n\n"
+  printf "   addmuxes \"http://localhost:9981\" \"myacct\" \"mypasswd\" \"network\" \"1234ABCD\"\n"
+  exit 1
+}
+
+# Check for correct number of args
+[[ $# -ne 5 ]] && print_usage
+
+_TVHEADEND="${1}"  # URL used to access Tvheadend WebUI
+_USER="${2}"       # Administrator username
+_PASS="${3}"       # Administrator password
+_NETWORK="${4}"    # Name of CableCARD network to add muxes to
+_DEVICE="${5}"     # DeviceID of HDHomeRun device
+
+# Get the tvheadend UUID of our network device
+_UUID=$( \
+  curl -sS --user "${_USER}:${_PASS}" "${_TVHEADEND}/api/idnode/load" -d "class=dvb_network_cablecard" -d "enum=1" | \
+  jq ".entries[] | select(.val == \"${_NETWORK}\") | .key" | \
+  tr -d \")
+
+# Check for valid UUID
+if ! [[ ${_UUID} =~ ^[a-f0-9]{32}$ ]] || ! [[ ${#_UUID} -eq 32 ]]
+then
+  printf "Invalid UUID found.\n\n"
+  printf "Check your credentials and insure authentication is set to plain + digest\n"
+  printf "  Configuration->General->Base->Authentication Type=Plain + Digest\n\n"
+  exit 1
+fi
+
+# Get a list of channel numbers from the CableCARD
+_LINEUP=$( \
+  curl -sS "http://api.hdhomerun.com/discover" | \
+  jq ".[] | select(.DeviceID == \"${_DEVICE}\") | .LineupURL" | \
+  tr -d \")
+
+# Loop through the list and create a mux for each channel number
+let i=j=0
+for _CHANNEL in $(curl -sS "${_LINEUP}" | jq '.[].GuideNumber | tonumber')
+do
+  curl -sS --user "${_USER}:${_PASS}" "${_TVHEADEND}/api/mpegts/network/mux_create" \
+    -d "uuid=${_UUID}" \
+    --data-urlencode "conf={\"epg\":0, \"vchan\":${_CHANNEL}}" > /dev/null
+  ((i++))
+  if [[ $((i%5+1)) -eq 5 ]]
+  then
+    j=$((j+5))
+    printf "%d..." $j
+  fi
+done
+printf "Done%c\n%d muxes added\n" '!' $((i%5+j))
