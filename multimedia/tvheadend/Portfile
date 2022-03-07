@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            2
+revision            5
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -41,7 +41,7 @@ patchfiles-append   0001-Makefile.patch \
                     0003-be64toh-undefined.patch \
                     0004-fdatasync.patch \
                     0005-configure.patch \
-                    0006-bonjour-printf.patch \
+                    0006-bonjour-v2.patch \
                     0007-tcp-recv.patch
 
 # python versions
@@ -216,6 +216,8 @@ set hts_user        hts
 set hts_group       hts
 
 set homedir         ${prefix}/var/lib/${name}
+set rundir          ${prefix}/var/run/${name}
+set pidfile         ${rundir}/${name}.pid
 set docdir          ${prefix}/share/doc/${name}
 
 add_users           ${hts_user} \
@@ -226,14 +228,26 @@ add_users           ${hts_user} \
 
 startupitem.create  yes
 startupitem.init    "TVHEADEND=${prefix}/bin/${name}"
+startupitem.init-append "ARGS=-f"
+startupitem.init-append "ARGS+=\" -p ${pidfile}\""
+startupitem.init-append "ARGS+=\" -u ${hts_user}\""
+startupitem.init-append "ARGS+=\" -g ${hts_group}\""
 # note: EPG grabbers are expected to be in the PATH
-startupitem.start   "su ${hts_user} -c \"env PATH=${prefix}/bin:/usr/bin:/bin:/usr/sbin:/sbin \${TVHEADEND} -f -u ${hts_user} -g ${hts_group}\""
-startupitem.stop    "su ${hts_user} -c \"pkill -U ${hts_user} ${name}\""
+startupitem.start   "su ${hts_user} -c \"env PATH=${prefix}/bin:/usr/bin:/bin:/usr/sbin:/sbin \${TVHEADEND} \${ARGS}\""
+# pkill -F not supported on Mac OS X <= Lion
+if {${os.major} <= 11} {
+    startupitem.stop "su ${hts_user} -c \"pkill -U ${hts_user} ${name}\""
+} else {
+    startupitem.stop "su ${hts_user} -c \"pkill -F ${pidfile} -U ${hts_user} ${name}\""
+}
 
 destroot.keepdirs   ${destroot}${homedir}/.hts/${name}
+destroot.keepdirs-append \
+                    ${destroot}${rundir}
 
 post-destroot {
     xinstall -d -m 0755 ${destroot}${homedir}/.hts/${name}
+    xinstall -d -m 0700 ${destroot}${rundir}
     xinstall -d -m 0755 ${destroot}${docdir}
     xinstall -m 0644 -W ${worksrcpath} LICENSE.md README.md debian/copyright ${destroot}${docdir}
 }
@@ -242,6 +256,7 @@ post-activate {
     file attributes ${homedir} -group ${hts_group} -owner ${hts_user}
     file attributes ${homedir}/.hts -group ${hts_group} -owner ${hts_user}
     file attributes ${homedir}/.hts/${name} -group ${hts_group} -owner ${hts_user}
+    file attributes ${rundir} -group ${hts_group} -owner ${hts_user}
 }
 
 if {![variant_isset superuser]} {
@@ -270,7 +285,7 @@ notes-append [subst \
 ]
 
 variant superuser \
-    description "Add a superuser to ${name} with a default username/password" {
+    description "Adds a superuser to ${name} with a default username/password" {
 
     post-destroot {
         xinstall -m 0600 -W ${filespath} superuser ${destroot}${homedir}/.hts/${name}
@@ -312,7 +327,7 @@ variant tv_grab_file \
 }
 
 variant addmuxes \
-    description "A simple script to create muxes from a CableCARD lineup" {
+    description "A simple script that creates muxes from a CableCARD lineup" {
 
     depends_lib-append port:curl port:jq
 
@@ -327,8 +342,8 @@ variant native_cpu \
     set build_cpu native
 
     # allow the user to set a custom cpu on the command line
-    if {[info exists configure.build_cpu]} {
-        set build_cpu ${configure.build_cpu}
+    if {[info exists override_build_cpu]} {
+        set build_cpu ${override_build_cpu}
     }
 
     if {${universal_possible} && [variant_isset universal]} {
@@ -338,6 +353,27 @@ variant native_cpu \
     } else {
         configure.args-append --cpu=${build_cpu}
     }
+}
+
+variant ipv6 \
+    description "Listen on IPv6" {
+
+    startupitem.init-append "ARGS+=\" -6\""
+}
+
+variant trace_debugging \
+    description "Log subsystem traces to a file" {
+
+    set log_options [list -l /tmp/${name}_debug.log --debug +all --trace +all --fileline --threadid --libav]
+
+    # Allow the user to debug/trace specific subsystems
+    if {[info exists override_debug_subsystems]} {
+        set log_options [lreplace ${log_options} 3 3 ${override_debug_subsystems}]
+    }
+    if {[info exists override_trace_subsystems]} {
+        set log_options [lreplace ${log_options} 5 5 ${override_trace_subsystems}]
+    }
+    startupitem.init-append "ARGS+=\" ${log_options}\""
 }
 
 livecheck.url       ${github.homepage}/commits/${github.livecheck.branch}.atom

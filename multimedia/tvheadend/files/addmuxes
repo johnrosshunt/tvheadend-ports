@@ -1,29 +1,48 @@
 #!/bin/bash
 
 # Inspired by this thread: https://tvheadend.org/boards/5/topics/32813
+# License: public-domain
 
 function print_usage ()
 {
-  printf "Usage: addmuxes <url> <user> <password> <network> <id>\n\n"
+  printf "Usage: addmuxes <url> <user> <password> <network> <id>\n"
+  printf "   or: addmuxes <url> <user> <password> <network> <id> <json-obj> ...\n\n"
   printf "where:\n\n"
   printf "       url: is the tvheadend WebUI URL (e.g. http://localhost:9981)\n"
   printf "      user: is the tvheadend administrator account\n"
   printf "  password: is the administrator account password\n"
   printf "   network: is the tvheadend network to use (created with: \"Configuration->DVB Inputs->Network->Add\")\n"
-  printf "        id: is the HDHomeRun Prime deviceID (found by: \"hdhomerun_config discover\")\n\n"
-  printf "Example:\n\n"
+  printf "        id: is the HDHomeRun Prime deviceID (found by: \"hdhomerun_config discover\")\n"
+  printf "  json-obj: optional json object(s) (see: https://github.com/dave-p/TVH-API-docs/wiki/mpegts#mpegtsmuxgrid)\n\n"
+  printf "Examples:\n\n"
   printf "   addmuxes \"http://localhost:9981\" \"myacct\" \"mypasswd\" \"network\" \"1234ABCD\"\n"
+  printf "   addmuxes \"http://localhost:9981\" \"myacct\" \"mypasswd\" \"network\" \"1234ABCD\" \"tsid_zero:true\"\n"
+  printf "   addmuxes \"http://localhost:9981\" \"myacct\" \"mypasswd\" \"network\" \"1234ABCD\" \"tsid_zero:true\" \"eit_tsid_nocheck:true\"\n"
   exit 1
 }
 
+function json_obj ()
+{
+  echo -e "${1}" | tr -d "[[:space:]]" | sed -ne "s/\(.*\):\(.*\)/\\${2}/p"
+}
+
 # Check for correct number of args
-[[ $# -ne 5 ]] && print_usage
+[[ $# -lt 5 ]] && print_usage
 
 _TVHEADEND="${1}"  # URL used to access Tvheadend WebUI
 _USER="${2}"       # Administrator username
 _PASS="${3}"       # Administrator password
 _NETWORK="${4}"    # Name of CableCARD network to add muxes to
 _DEVICE="${5}"     # DeviceID of HDHomeRun device
+
+# Parse optional json object(s)
+shift 5
+while [ $# -gt 0 ]
+do
+  _PROP+=($(json_obj "${1}" 1))
+  _VAL+=($(json_obj "${1}" 2))
+  shift
+done
 
 # Get the tvheadend UUID of our network device
 _UUID=$( \
@@ -50,9 +69,15 @@ _LINEUP=$( \
 let i=j=0
 for _CHANNEL in $(curl -sS "${_LINEUP}" | jq '.[].GuideNumber | tonumber')
 do
+  _URLENCODE_DATA="conf={\"epg\":0, \"vchan\":${_CHANNEL}"
+  for elem in ${!_PROP[@]}
+  do
+    _URLENCODE_DATA+=", \"${_PROP[${elem}]}\":${_VAL[${elem}]}"
+  done
+  _URLENCODE_DATA+="}"
   curl -sS --user "${_USER}:${_PASS}" "${_TVHEADEND}/api/mpegts/network/mux_create" \
     -d "uuid=${_UUID}" \
-    --data-urlencode "conf={\"epg\":0, \"vchan\":${_CHANNEL}}" > /dev/null
+    --data-urlencode "${_URLENCODE_DATA}" > /dev/null
   ((i++))
   if [[ $((i%5+1)) -eq 5 ]]
   then

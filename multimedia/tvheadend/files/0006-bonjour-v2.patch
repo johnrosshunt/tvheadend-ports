@@ -1,0 +1,52 @@
+Fixes format specification warning when compiling 32-bit
+code on Darwin. SInt32 is int on 64-bit systems, long int
+on 32-bit systems.
+
+Also changes successful registration from error to info.
+
+diff --git a/src/bonjour.c b/src/bonjour.c
+index ac710fda8..d18fe9e75 100644
+--- a/src/bonjour.c
++++ b/src/bonjour.c
+@@ -37,8 +37,8 @@ static void
+ bonjour_callback(CFNetServiceRef theService, CFStreamError* error, void* info)
+ {  
+   if (error->error) {
+-    tvherror(LS_BONJOUR, "callback error (domain = %ld, error =%d)",
+-             error->domain, error->error);   
++    tvherror(LS_BONJOUR, "callback error (domain = %ld, error =%"PRIint32_t")",
++             error->domain, error->error);
+   } 
+ }
+ 
+@@ -85,10 +85,10 @@ bonjour_start_service(CFNetServiceRef *svc, const char *service_type,
+ 
+   if (!CFNetServiceRegisterWithOptions(*svc, 0, &error))
+     tvherror(LS_BONJOUR, "registration failed (service type = %s, "
+-             "domain = %ld, error =%d)", service_type, error.domain, error.error); 
++             "domain = %ld, error =%"PRIint32_t")", service_type, error.domain,
++              error.error);
+   else
+-    tvherror(LS_BONJOUR, "service '%s' successfully established",
+-             service_type);
++    tvhinfo(LS_BONJOUR, "service '%s' successfully established", service_type);
+ }
+ 
+ static void
+diff --git a/src/tvheadend.h b/src/tvheadend.h
+index 072391d3e..347013b19 100644
+--- a/src/tvheadend.h
++++ b/src/tvheadend.h
+@@ -338,6 +338,12 @@ void tvh_qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void
+ #define PRItime_t       "ld"
+ #endif
+ 
++#if __WORDSIZE == 32 && defined(PLATFORM_DARWIN)
++#define PRIint32_t      "ld"
++#else
++#define PRIint32_t      "d"
++#endif
++
+ /* transcoding */
+ #define TVH_NAME_LEN 32
+ #define TVH_TITLE_LEN 256

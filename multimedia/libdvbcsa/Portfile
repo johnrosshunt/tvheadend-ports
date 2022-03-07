@@ -6,7 +6,7 @@ PortGroup           muniversal 1.0
 
 github.setup        glenvt18 libdvbcsa 2a1e61e569a621c55c2426f235f42c2398b7f18f
 version             20180128
-revision            4
+revision            5
 
 # only tlsv1 available for OS < Mavericks
 if {${os.major} < 12} {
@@ -44,15 +44,8 @@ depends_lib-append \
                     port:automake \
                     port:libtool
 
-if {![info exists universal_possible]} {
-    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
-}
-if {${universal_possible} && [variant_isset universal]} {
-    foreach arch ${universal_archs_supported} {
-        # note: build uses -O3
-        configure.cflags-delete "-Os"
-    }
-}
+# note: build uses -O3
+configure.cflags-delete "-Os"
 
 use_autoconf        yes
 autoconf.cmd        autoupdate && ./bootstrap
