@@ -10,13 +10,13 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      1295dd2be863f5beb764290fce9317b24193dfc0
-set tvh_commit_date 20220214
+set tvh_commit      3b1d7a928a8632d8c59e1fc6bb1a0a25dde9d5af
+set tvh_commit_date 20220315
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            5
+revision            0
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -90,12 +90,14 @@ depends_lib-append  port:bzip2 \
                     port:libvpx \
                     port:pcre2 \
                     port:realpath \
+                    port:socat \
                     port:soxr \
                     port:speex \
                     port:uriparser \
                     port:wget \
                     port:x264 \
                     port:x265 \
+                    port:xmlstarlet \
                     port:xz \
                     port:zlib \
                     port:python${cur_version} \
@@ -217,7 +219,7 @@ set hts_group       hts
 
 set homedir         ${prefix}/var/lib/${name}
 set rundir          ${prefix}/var/run/${name}
-set pidfile         ${rundir}/${name}.pid
+set pidfile         ${rundir}/pid
 set docdir          ${prefix}/share/doc/${name}
 
 add_users           ${hts_user} \
