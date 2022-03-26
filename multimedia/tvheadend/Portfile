@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            0
+revision            2
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -90,14 +90,12 @@ depends_lib-append  port:bzip2 \
                     port:libvpx \
                     port:pcre2 \
                     port:realpath \
-                    port:socat \
                     port:soxr \
                     port:speex \
                     port:uriparser \
                     port:wget \
                     port:x264 \
                     port:x265 \
-                    port:xmlstarlet \
                     port:xz \
                     port:zlib \
                     port:python${cur_version} \
@@ -319,7 +317,10 @@ variant xmltv \
     description "Install EPG grabbers for xmltv" {
 
     require_active_variants xmltv perl5_34
-    depends_lib-append port:xmltv
+    depends_lib-append \
+                    port:xmltv \
+                    port:socat \
+                    port:xmlstarlet
 }
 
 variant tv_grab_file \
