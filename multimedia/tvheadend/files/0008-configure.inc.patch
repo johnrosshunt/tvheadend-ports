@@ -1,0 +1,20 @@
+Use previously matched regex compatible with MacOS/BSD sed.
+This will also work with GNU sed.
+
+diff --git a/support/configure.inc b/support/configure.inc
+index 821102fbb..f15a2db7d 100755
+--- a/support/configure.inc
++++ b/support/configure.inc
+@@ -587,10 +587,10 @@ EOF
+ 
+   # Add configure command
+   echo "  \"Configure arguments:\\n\"" >> "${CONFIG_C}"
+-  echo "  ${CONFIGURE_ARGS}" | sed -e 's/"/\\"/g' | sed -e 's/.*/  "\0" "\\n"/g' >> "${CONFIG_C}"
++  echo "  ${CONFIGURE_ARGS}" | sed -e 's/"/\\"/g' | sed -e 's/.*/  "&" "\\n"/g' >> "${CONFIG_C}"
+ 
+   # Add build config string
+-  print_config | sed -e 's/"/\\"/g' | sed -e 's/.*/  "\0" "\\n"/g' >> "${CONFIG_C}"
++  print_config | sed -e 's/"/\\"/g' | sed -e 's/.*/  "&" "\\n"/g' >> "${CONFIG_C}"
+   echo '  "";' >> "${CONFIG_C}"
+ }
+ 

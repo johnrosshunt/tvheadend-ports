@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            2
+revision            3
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -42,7 +42,8 @@ patchfiles-append   0001-Makefile.patch \
                     0004-fdatasync.patch \
                     0005-configure.patch \
                     0006-bonjour-v2.patch \
-                    0007-tcp-recv.patch
+                    0007-tcp-recv.patch \
+                    0008-configure.inc.patch
 
 # python versions
 set cur_branch      3.10
