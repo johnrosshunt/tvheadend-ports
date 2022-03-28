@@ -6,6 +6,7 @@ PortGroup           muniversal 1.0
 name                hdhomerun-devel
 conflicts           hdhomerun
 version             20220128
+revision            1
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
@@ -28,12 +29,10 @@ if {${name} eq ${subport}} {
                         sha256  deaf463bbcc3eefa72f97199efb6213f7b0e2c8e91f1b3d2cbf52056a8715d15 \
                         size    51124
 
-    patchfiles          patch-01-Makefile-cflags_libpath.diff patch-02-libhdhomerun-pc.diff
+    patchfiles          patch-01-Makefile-cflags_libpath.diff
     patch.args          -p1
     post-patch {
         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/Makefile
-        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/libhdhomerun.pc
-        reinplace "s|@VERSION@|${version}|g" ${worksrcpath}/libhdhomerun.pc
     }
 
     use_configure       no
@@ -72,9 +71,6 @@ if {${name} eq ${subport}} {
         xinstall -d -m 0755 ${destroot}${prefix}/share/doc/hdhomerun/
         xinstall -m 0644 ${worksrcpath}/README.md \
             ${destroot}${prefix}/share/doc/hdhomerun/README.md
-        xinstall -d -m 0755 ${destroot}${prefix}/lib/pkgconfig/
-        xinstall -m 0644 ${worksrcpath}/libhdhomerun.pc \
-            ${destroot}${prefix}/lib/pkgconfig/libhdhomerun.pc
     }
     livecheck.type      regex
     livecheck.url       http://www.silicondust.com/support/hdhomerun/downloads/
