@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            6
+revision            7
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -341,6 +341,14 @@ variant tv_grab_file \
     description "A simple grabber that loads EPG data from a file" {
 
     depends_lib-append port:tv_grab_file
+}
+
+variant tv_grab_ssh \
+    description "A simple grabber that loads EPG data over ssh" {
+
+    post-destroot {
+        xinstall -m 0755 -W ${filespath} tv_grab_ssh ${destroot}${prefix}/bin
+    }
 }
 
 variant addmuxes \
