@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            4
+revision            6
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -108,7 +108,7 @@ if {${os.major} <= 11} {
                     port:proctools
 }
 
-# llvm+clang 9 or greater is needed link properly with gcc
+# llvm 9/clang 9 or greater is needed link properly with gcc
 catch {exec bash -c "ld -v 2>&1 | sed -ne \"s/^.*LLVM version \\(\[0-9\]*\\).*/\\1/p\""} llvm_major
 if {${llvm_major} < 9 || ${llvm_major} == ""} {
     depends_build-append \
@@ -129,12 +129,25 @@ if {${os.major} >= 10} {
 }
 
 # determine SDK version
-set sdk_major       [lindex [split ${configure.sdk_version} "."] 0]
-set sdk_minor       [lindex [split ${configure.sdk_version} "."] 1]
+set sdkver ${configure.sdk_version}
+
+# check for a symlink to the real SDK
+if {${configure.sdkroot} != ""} {
+  catch {exec bash -c "readlink -n ${configure.sdkroot} 2>/dev/null || true"} sdk_link
+  if {${sdk_link} != ""} {
+    set sdkver [string range ${sdk_link} 6 end-4]
+  }
+}
+
+# split into major and minor numbers
+set sdk_major       [lindex [split ${sdkver} "."] 0]
+set sdk_minor       [lindex [split ${sdkver} "."] 1]
 set sdk_minor       [expr {${sdk_minor} == {} ? 0 : ${sdk_minor}}]
 
-# macOS SDKs >= 10.12 need to patched
-if {${sdk_major} == 10 && ${sdk_minor} >= 12 || ${sdk_major} >= 11} {
+# macOS SDKs between 10.12 and 12.1 need to patched
+if {(${sdk_major} == 10 && ${sdk_minor} > 11) ||
+     ${sdk_major} == 11 ||
+    (${sdk_major} == 12 && ${sdk_minor} < 3)} {
     set patched_sdkroot \
                     ${worksrcpath}/MacOSX${configure.sdk_version}.sdk
 }
