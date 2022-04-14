@@ -10,8 +10,8 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      58df4bf5142a7628b3994ec6c0c4b8e1d8d27694
-set tvh_commit_date 20220407
+set tvh_commit      26713c1e451a74dbcc7aaec8427c0356cc2c546f
+set tvh_commit_date 20220414
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
@@ -198,8 +198,8 @@ configure.args      --platform=${os.platform} \
                     --disable-libfdkaac_static \
                     --disable-libopus_static
 
-# Mac OS X <= Leopard or Monterey will have to live with some warnings
-if {${os.major} <= 9 || ${os.major} >= 21} {
+# Mac OS X <= Leopard will have to live with some warnings
+if {${os.major} <= 9} {
     configure.args-append \
                     --nowerror
 }
@@ -209,6 +209,11 @@ configure.cflags-append \
                     -Wno-format-truncation
 configure.cflags-append \
                     -Wno-unused-but-set-variable
+# for gcc 11 and above
+if {[string range ${configure.compiler} 13 end] >= 11} {
+    configure.cflags-append \
+                    -Wno-maybe-uninitialized
+}
 
 # support universal binaries
 if {![info exists universal_possible]} {
