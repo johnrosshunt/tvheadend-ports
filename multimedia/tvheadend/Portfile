@@ -10,13 +10,13 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      26713c1e451a74dbcc7aaec8427c0356cc2c546f
-set tvh_commit_date 20220414
+set tvh_commit      420786927eea22b7a009f03b0b867058d0818e99
+set tvh_commit_date 20220422
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            0
+revision            5
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -42,7 +42,8 @@ patchfiles-append   0001-Makefile.patch \
                     0004-fdatasync.patch \
                     0006-bonjour-v2.patch \
                     0007-tcp-recv.patch \
-                    0008-configure.inc.patch
+                    0008-configure.inc.patch \
+                    0009-git-CVE-2022-24765.patch
 
 # python versions
 set cur_branch      3.10
@@ -64,6 +65,9 @@ post-patch {
             "s|static const size_t kAuthorizationExternalFormLength = 32;|enum { kAuthorizationExternalFormLength = 32 };|g" \
             System/Library/Frameworks/Security.framework/Versions/A/Headers/Authorization.h
     }
+
+    # workaround for git CVE-2022-24765
+    system -W ${worksrcpath} "support/version src/version.c > /dev/null"
 }
 
 depends_build-append \
@@ -118,13 +122,9 @@ if {${llvm_major} < 9 || ${llvm_major} == ""} {
 # a single local function forces us to use gcc
 compiler.whitelist  macports-gcc-7 macports-gcc-6
 if {${os.major} >= 10} {
-    foreach ver {8 9 10} {
+    foreach ver {8 9 10 11} {
         compiler.whitelist-prepend \
                     macports-gcc-${ver}
-    }
-    if {${os.major} >= 21} {
-        compiler.whitelist-prepend \
-                    macports-gcc-11
     }
 }
 
