@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            0
+revision            1
 # Makefile requires a git checkout
 fetch.type          git
 
