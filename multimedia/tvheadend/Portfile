@@ -16,7 +16,7 @@ set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
 version             ${tvh_version}
-revision            0
+revision            1
 # Makefile requires a git checkout
 fetch.type          git
 
@@ -120,12 +120,21 @@ if {${llvm_major} < 9 || ${llvm_major} == ""} {
 }
 
 # a single local function forces us to use gcc
-compiler.whitelist  macports-gcc-7 macports-gcc-6
-if {${os.major} >= 10} {
-    foreach ver {8 9 10 11} {
-        compiler.whitelist-prepend \
+if {${os.arch} == "i386" || ${os.arch} == "arm"} {
+  set wl {}
+  if {${os.major} < 10} {
+    set wl [linsert ${wl} 0 7 6]
+  }
+  if {${os.major} > 9 && ${os.major} < 15} {
+    set wl [linsert ${wl} 0 9 8]
+  }
+  if {${os.major} > 9} {
+    set wl [linsert ${wl} 0 11 10]
+  }
+  foreach ver ${wl} {
+    compiler.whitelist-append \
                     macports-gcc-${ver}
-    }
+  }
 }
 
 # determine SDK version
