@@ -5,8 +5,7 @@ PortGroup           muniversal 1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20220128
-revision            1
+version             20220204
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
