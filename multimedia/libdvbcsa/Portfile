@@ -3,10 +3,11 @@
 PortSystem          1.0
 PortGroup           github 1.0
 PortGroup           muniversal 1.0
+PortGroup           mpi 1.0
 
 github.setup        glenvt18 libdvbcsa 2a1e61e569a621c55c2426f235f42c2398b7f18f
 version             20180128
-revision            5
+revision            6
 
 # only tlsv1 available for OS < Mavericks
 if {${os.major} < 12} {
@@ -44,9 +45,6 @@ depends_lib-append \
                     port:automake \
                     port:libtool
 
-# note: build uses -O3
-configure.cflags-delete "-Os"
-
 use_autoconf        yes
 autoconf.cmd        autoupdate && ./bootstrap
 
@@ -58,75 +56,90 @@ post-destroot {
         ${destroot}${docdir}
 }
 
-if {${configure.build_arch} eq "i386" || ${configure.build_arch} eq "x86_64"} {
-    if {![catch {sysctl hw.cpu64bit_capable} result] && ${result} == 1} {
-        variant uint64 \
-        conflicts uint32 mmx sse2 ssse3 avx2 \
-        description "Use native 64 bits integers for bitslice" {
-            configure.args-append --enable-uint64
-        }
-    } else {
-        variant uint32 \
-        conflicts uint64 mmx sse2 ssse3 avx2 \
-        description "Use native 32 bits integers for bitslice" {
-            configure.args-append --enable-uint32
-        }
-    }
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
 }
-
-if {![catch {sysctl hw.optional.mmx} result] && ${result} == 1} {
-    variant mmx \
-        conflicts uint32 uint64 sse2 ssse3 avx2 \
-        description "Use MMX for bitslice" {
-        configure.args-append --enable-mmx
-    }
-}
-
-if {![catch {sysctl hw.optional.sse2} result] && ${result} == 1} {
-    variant sse2 \
-        conflicts uint32 uint64 mmx ssse3 avx2 \
-        description "Use SSE2 for bitslice" {
-        configure.args-append --enable-sse2
-    }
-}
-
-if {![catch {sysctl hw.optional.sse3} result] && ${result} == 1} {
-    # this is a sensible default for intel and compatible processors
-    default_variants +ssse3
-    variant ssse3 \
-        conflicts uint32 uint64 mmx sse2 avx2 \
-        description "Use SSSE3 for bitslice" {
-        configure.args-append --enable-ssse3
-    }
-}
-
-if {![catch {sysctl hw.optional.avx2_0} result] && ${result} == 1} {
-    variant avx2 \
-        conflicts uint32 uint64 mmx sse2 ssse3 \
-        description "Use AVX2 for bitslice" {
-        pre-fetch {
-            if {![avx_compiler_isset]} {
-            return -code error "$name: Variant avx2 needs a clang-derived compiler"
+if {!${universal_possible} || ![variant_isset universal]} {
+    # test native hardware for non-universal builds
+    if {${configure.build_arch} eq "i386" || ${configure.build_arch} eq "x86_64"} {
+        if {![catch {sysctl hw.cpu64bit_capable} result] && ${result} == 1} {
+            variant uint64 \
+                conflicts uint32 mmx sse2 ssse3 avx2 \
+                description "Use native 64 bits integers for bitslice" {
+                configure.args-append --enable-uint64
+            }
+        } else {
+            variant uint32 \
+                conflicts uint64 mmx sse2 ssse3 avx2 \
+                description "Use native 32 bits integers for bitslice" {
+                configure.args-append --enable-uint32
             }
         }
-        configure.args-append --enable-avx2
     }
-}
 
-if {${configure.build_arch} eq "powerpc"} {
-    default_variants +altivec
-    variant altivec \
-        description "Use AltiVec for bitslice" {
-        configure.args-append --enable-altivec
+    if {![catch {sysctl hw.optional.mmx} result] && ${result} == 1} {
+        variant mmx \
+            conflicts uint32 uint64 sse2 ssse3 avx2 \
+            description "Use MMX for bitslice" {
+            configure.args-append --enable-mmx
+        }
     }
-}
 
-if {${configure.build_arch} eq "arm64"} {
-    default_variants +neon
-    variant neon \
-        description "Use NEON for bitslice" {
-        configure.args-append --enable-neon
+    if {![catch {sysctl hw.optional.sse2} result] && ${result} == 1} {
+        variant sse2 \
+            conflicts uint32 uint64 mmx ssse3 avx2 \
+            description "Use SSE2 for bitslice" {
+            configure.args-append --enable-sse2
+        }
     }
+
+    if {![catch {sysctl hw.optional.avx2_0} result] && ${result} == 1} {
+        variant avx2 \
+            conflicts uint32 uint64 mmx sse2 ssse3 \
+            description "Use AVX2 for bitslice" {
+            pre-configure {
+                if {![avx_compiler_isset]} {
+                    return -code error "${name}: Variant avx2 needs a clang-derived compiler"
+                }
+            }
+            configure.args-append --enable-avx2
+        }
+    }
+
+    if {![catch {sysctl hw.optional.sse3} result] && ${result} == 1} {
+        # this is a sensible default for intel and compatible processors
+        if {![variant_isset uint32] && ![variant_isset uint64] && ![variant_isset mmx] && ![variant_isset sse2] && ![variant_isset avx2]} {
+            default_variants +ssse3
+        }
+        variant ssse3 \
+            conflicts uint32 uint64 mmx sse2 avx2 \
+            description "Use SSSE3 for bitslice" {
+            configure.args-append --enable-ssse3
+        }
+    }
+
+    if {${configure.build_arch} eq "powerpc"} {
+        default_variants +altivec
+        variant altivec \
+            description "Use AltiVec for bitslice" {
+            configure.args-append --enable-altivec
+        }
+    }
+
+    if {${configure.build_arch} eq "arm64"} {
+        default_variants +neon
+        variant neon \
+            description "Use NEON for bitslice" {
+            configure.args-append --enable-neon
+        }
+    }
+} else {
+    # assume defaults for universal binaries
+    lappend merger_configure_args(arm64) --enable-neon
+    lappend merger_configure_args(i386) --enable-ssse3
+    lappend merger_configure_args(x86_64) --enable-ssse3
+    lappend merger_configure_args(ppc) --enable-altivec
+    lappend merger_configure_args(ppc64) --enable-altivec
 }
 
 variant sbox \
