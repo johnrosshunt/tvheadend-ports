@@ -5,7 +5,7 @@ PortGroup           muniversal 1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20220204
+version             20220822
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
@@ -24,9 +24,9 @@ if {${name} eq ${subport}} {
     extract.suffix      .tgz
     extract.only        ${distname}${extract.suffix}
     worksrcdir          libhdhomerun
-    checksums           rmd160  abd8e4a8f8e0fcd44839795e0d29e4e3527ffa00 \
-                        sha256  deaf463bbcc3eefa72f97199efb6213f7b0e2c8e91f1b3d2cbf52056a8715d15 \
-                        size    51124
+    checksums           rmd160  b9a24e4a4038d9de74bc74377e321720e04ece60 \
+                        sha256  1e54ffefc2d4893911501da31e662b9d063e6c18afe2cb5c6653325277a54a97 \
+                        size    50963
 
     patchfiles          patch-01-Makefile-cflags_libpath.diff
     patch.args          -p1
