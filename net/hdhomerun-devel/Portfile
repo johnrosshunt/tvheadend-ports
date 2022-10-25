@@ -1,11 +1,10 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           muniversal 1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20220822
+version             20221023
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
@@ -24,11 +23,12 @@ if {${name} eq ${subport}} {
     extract.suffix      .tgz
     extract.only        ${distname}${extract.suffix}
     worksrcdir          libhdhomerun
-    checksums           rmd160  b9a24e4a4038d9de74bc74377e321720e04ece60 \
-                        sha256  1e54ffefc2d4893911501da31e662b9d063e6c18afe2cb5c6653325277a54a97 \
-                        size    50963
+    checksums           rmd160  79de29621ade281c60d4d31bcc744bd51623ea68 \
+                        sha256  f07d5d56aef4650198f940a73e44adfd278b2a2ee163274475c1acb5dd52f1ae \
+                        size    62610
+    universal_variant   yes
 
-    patchfiles          patch-01-Makefile-cflags_libpath.diff
+    patchfiles          patch-01-Makefile-${version}.diff
     patch.args          -p1
     post-patch {
         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/Makefile
@@ -36,21 +36,18 @@ if {${name} eq ${subport}} {
 
     use_configure       no
  
-    build.args-append   CC=${configure.cc} \
-                        CXX=${configure.cxx} \
-                        CPP=${configure.cpp}
+    build.args-append   CC="${configure.cc}"
+    build.args-append   CFLAGS="${configure.cflags}"
 
     if {![info exists universal_possible]} {
         set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
     }
     if {${universal_possible} && [variant_isset universal]} {
-        foreach arch ${universal_archs_supported} {
-            lappend merger_build_env(${arch}) \
-                        "CFLAGS=${configure.cflags} [muniversal_get_arch_flag ${arch}]"
-        }
+        build.args-append \
+                        TARGET="[portconfigure::configure_get_universal_archflags]"
     } else {
-        build.env-append \
-                        "CFLAGS=${configure.cflags} [get_canonical_archflags cc]"
+        build.args-append \
+                        TARGET="[get_canonical_archflags cc]"
     }
 
     destroot {
@@ -60,13 +57,12 @@ if {${name} eq ${subport}} {
             ${destroot}${prefix}/lib/libhdhomerun.dylib
         xinstall -d -m 0755 ${destroot}${prefix}/include/libhdhomerun/
         xinstall -m 0644 -W ${worksrcpath} \
-                hdhomerun.h hdhomerun_os.h hdhomerun_os_posix.h \
-                hdhomerun_types.h hdhomerun_pkt.h hdhomerun_sock.h \
-                hdhomerun_debug.h hdhomerun_discover.h hdhomerun_control.h \
-                hdhomerun_video.h hdhomerun_channels.h hdhomerun_channelscan.h \
-                hdhomerun_device.h hdhomerun_device_selector.h \
+                hdhomerun.h hdhomerun_channels.h hdhomerun_channelscan.h \
+                hdhomerun_control.h hdhomerun_debug.h hdhomerun_device.h \
+                hdhomerun_device_selector.h hdhomerun_discover.h hdhomerun_os.h \
+                hdhomerun_os_posix.h hdhomerun_pkt.h hdhomerun_sock.h \
+                hdhomerun_types.h hdhomerun_video.h \
             ${destroot}${prefix}/include/libhdhomerun/
-        xinstall -d -m 0755 ${destroot}${prefix}/share/hdhomerun/
         xinstall -d -m 0755 ${destroot}${prefix}/share/doc/hdhomerun/
         xinstall -m 0644 ${worksrcpath}/README.md \
             ${destroot}${prefix}/share/doc/hdhomerun/README.md
