@@ -10,8 +10,8 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      604d81a29f88b37189b49cf6a2dfe73b1ca546da
-set tvh_commit_date 20221016
+set tvh_commit      185013382c1d9a2aee8425746b65b7415802fc29
+set tvh_commit_date 20221026
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
@@ -114,49 +114,63 @@ if {${os.major} <= 11} {
 
 # llvm 9/clang 9 or greater is needed link properly with gcc
 catch {exec bash -c "ld -v 2>&1 | sed -ne \"s/^.*LLVM version \\(\[0-9\]*\\).*/\\1/p\""} llvm_major
-if {${llvm_major} < 9 || ${llvm_major} == ""} {
+if {${llvm_major} < 9 || ${llvm_major} eq {}} {
     depends_build-append \
                     port:clang-9.0
 }
 
-# a single local function forces us to use gcc
-if {${os.arch} == "i386" || ${os.arch} == "arm"} {
-  set wl {}
-  if {${os.major} < 10} {
+# determine gcc versions that can be used
+set wl {}
+if {${os.major} < 15} {
     set wl [linsert ${wl} 0 7 6]
-  }
-  if {${os.major} > 9 && ${os.major} < 15} {
+}
+if {${os.major} > 9 && ${os.major} < 15} {
     set wl [linsert ${wl} 0 9 8]
-  }
-  if {${os.major} > 9} {
-    set wl [linsert ${wl} 0 11 10]
-  }
-  foreach ver ${wl} {
-    compiler.whitelist-append \
+}
+if {${os.major} > 9} {
+    set wl [linsert ${wl} 0 12 11 10]
+}
+
+# use port selected gcc if possible
+catch {exec bash -c "port select gcc 2>/dev/null | sed -ne \"s/^.*mp-gcc\\(.*\\) \(active\).*/\\1/p\""} sel
+if {[lsearch ${wl} ${sel}] > -1} {
+    compiler.whitelist \
+                    macports-gcc-${sel}
+}
+
+# if whitelist is set, or have a valid compiler, don't install another
+if {${compiler.whitelist} eq {}} {
+    foreach ver ${wl} {
+        compiler.whitelist-append \
                     macports-gcc-${ver}
-  }
+        if {[file exists ${prefix}/bin/gcc-mp-${ver}]} {
+            compiler.whitelist \
+                    macports-gcc-${ver}
+            break
+        }
+    }
 }
 
 # determine SDK version
 set sdkver ${configure.sdk_version}
 
 # check for a symlink to the real SDK
-if {${configure.sdkroot} != ""} {
-  catch {exec bash -c "readlink -n ${configure.sdkroot} 2>/dev/null || true"} sdk_link
-  if {${sdk_link} != ""} {
-    set sdkver [string range ${sdk_link} 6 end-4]
-  }
+if {${configure.sdkroot} ne {}} {
+    catch {exec bash -c "readlink -n ${configure.sdkroot} 2>/dev/null || true"} sdk_link
+        if {${sdk_link} ne {}} {
+        set sdkver [string range ${sdk_link} 6 end-4]
+    }
 }
 
 # split into major and minor numbers
 set sdk_major       [lindex [split ${sdkver} "."] 0]
 set sdk_minor       [lindex [split ${sdkver} "."] 1]
-set sdk_minor       [expr {${sdk_minor} == {} ? 0 : ${sdk_minor}}]
+set sdk_minor       [expr {${sdk_minor} eq {} ? 0 : ${sdk_minor}}]
 
 # macOS SDKs between 10.12 and 12.1 need to patched
-if {(${sdk_major} == 10 && ${sdk_minor} > 11) ||
-     ${sdk_major} == 11 ||
-    (${sdk_major} == 12 && ${sdk_minor} < 3)} {
+if {(${sdk_major} eq 10 && ${sdk_minor} > 11) ||
+     ${sdk_major} eq 11 ||
+    (${sdk_major} eq 12 && ${sdk_minor} < 3)} {
     set patched_sdkroot \
                     ${worksrcpath}/MacOSX${configure.sdk_version}.sdk
 }
@@ -168,7 +182,7 @@ configure.cppflags  -isystem${prefix}/include
 if {[info exists patched_sdkroot]} {
     configure.cppflags-append \
                     -isysroot${patched_sdkroot}
-} elseif {${configure.sdkroot} != ""} {
+} elseif {${configure.sdkroot} ne {}} {
     configure.cppflags-append \
                     -isysroot${configure.sdkroot}
 } elseif {${os.major} > 10} {
@@ -177,7 +191,7 @@ if {[info exists patched_sdkroot]} {
 } else {
     # older systems require Mac OS X 10.7 SDK to be present
     catch {exec bash -c "xcodebuild -version -sdk macosx SDKVersion 2>/dev/null | head -1"} sdkver
-    if {${sdkver} == "10.7"} {
+    if {${sdkver} eq "10.7"} {
         configure.cppflags-append \
                     -isysroot${developer_dir}/SDKs/MacOSX${sdkver}.sdk
     } else {
@@ -207,21 +221,19 @@ configure.args      --platform=${os.platform} \
                     --disable-libfdkaac_static \
                     --disable-libopus_static
 
-# Mac OS X <= Leopard will have to live with some warnings
-if {${os.major} <= 9} {
-    configure.args-append \
-                    --nowerror
-}
-
 # silence some useless compiler warnings
 configure.cflags-append \
-                    -Wno-format-truncation
-configure.cflags-append \
+                    -Wno-format-truncation \
                     -Wno-unused-but-set-variable
-# for gcc 11 and above
+# silence warnings for gcc 11 and above
 if {[string range ${configure.compiler} 13 end] >= 11} {
     configure.cflags-append \
                     -Wno-maybe-uninitialized
+}
+# silence warnings for gcc 12 and above
+if {[string range ${configure.compiler} 13 end] >= 12} {
+    configure.cflags-append \
+                    -Wno-address
 }
 
 # support universal binaries
@@ -240,6 +252,7 @@ if {${universal_possible} && [variant_isset universal]} {
                     --cflags="${configure.cppflags} ${configure.cflags} -arch ${build_arch}"
 }
 
+# set up the user account
 set hts_user        hts
 set hts_group       hts
 
@@ -254,6 +267,7 @@ add_users           ${hts_user} \
                     home=${homedir} \
                     realname=Tvheadend\ -\ a\ TV\ streaming\ server\ and\ DVR
 
+# create the startup script
 startupitem.create  yes
 startupitem.init    "TVHEADEND=${prefix}/bin/${name}"
 startupitem.init-append "ARGS=-f"
@@ -269,6 +283,7 @@ if {${os.major} <= 11} {
     startupitem.stop "su ${hts_user} -c \"pkill -F ${pidfile} -U ${hts_user} ${name}\""
 }
 
+# define our file locations
 destroot.keepdirs   ${destroot}${homedir}/.hts/${name}
 destroot.keepdirs-append \
                     ${destroot}${rundir}
@@ -287,6 +302,7 @@ post-activate {
     file attributes ${rundir} -group ${hts_group} -owner ${hts_user}
 }
 
+# go nuts with lots of confusing variants
 if {![variant_isset superuser]} {
     notes-append [subst \
         {
@@ -380,7 +396,7 @@ variant native_cpu \
 
     set build_cpu native
 
-    # allow the user to set a custom cpu on the command line
+    # this hack allows the user to set a custom cpu on the command line
     if {[info exists override_build_cpu]} {
         set build_cpu ${override_build_cpu}
     }
