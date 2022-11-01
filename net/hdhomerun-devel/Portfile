@@ -4,7 +4,7 @@ PortSystem          1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20221023
+version             20221031
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
@@ -23,9 +23,9 @@ if {${name} eq ${subport}} {
     extract.suffix      .tgz
     extract.only        ${distname}${extract.suffix}
     worksrcdir          libhdhomerun
-    checksums           rmd160  79de29621ade281c60d4d31bcc744bd51623ea68 \
-                        sha256  f07d5d56aef4650198f940a73e44adfd278b2a2ee163274475c1acb5dd52f1ae \
-                        size    62610
+    checksums           rmd160  a8276b190a1f0b4a7f3932fbf86058d1683f451f \
+                        sha256  7d96fc2d718ba45b351d27d1a676a8c308b046e0c74673c7eb332d068d78235f \
+                        size    62810
     universal_variant   yes
 
     patchfiles          patch-01-Makefile-${version}.diff
@@ -36,8 +36,8 @@ if {${name} eq ${subport}} {
 
     use_configure       no
  
-    build.args-append   CC="${configure.cc}"
-    build.args-append   CFLAGS="${configure.cflags}"
+    build.args-append   CC="${configure.cc}" \
+                        CFLAGS="${configure.cflags}"
 
     if {![info exists universal_possible]} {
         set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
