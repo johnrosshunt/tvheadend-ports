@@ -10,8 +10,8 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      1a437c88ea35d28e235b76bf890b227d60e84db4
-set tvh_commit_date 20221031
+set tvh_commit      52c3ed3ef17eeccddc6a4cf7c0d7151c2823438f
+set tvh_commit_date 20221110
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
@@ -138,7 +138,7 @@ if {[lsearch ${wl} ${sel}] > -1} {
                     macports-gcc-${sel}
 }
 
-# if whitelist is set, or have a valid compiler, don't install another
+# if port selected or valid gcc is found, don't install another
 if {${compiler.whitelist} eq {}} {
     foreach ver ${wl} {
         compiler.whitelist-append \
