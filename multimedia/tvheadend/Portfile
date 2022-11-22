@@ -10,7 +10,7 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      19c3b87c23fe92a5dc8f4b2bf3ccd69111de0d09
+set tvh_commit      5543ce518faaeeb0677fd7c2fca26f8ae0d265d3
 set tvh_commit_date 20221121
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
@@ -128,7 +128,7 @@ if {${os.major} > 9 && ${os.major} < 15} {
     set wl [linsert ${wl} 0 9 8]
 }
 if {${os.major} > 9} {
-    set wl [linsert ${wl} 0 11 10]
+    set wl [linsert ${wl} 0 12 11 10]
 }
 
 # use port selected gcc if possible
@@ -224,17 +224,8 @@ configure.args      --platform=${os.platform} \
 # silence some useless compiler warnings
 configure.cflags-append \
                     -Wno-format-truncation \
-                    -Wno-unused-but-set-variable
-# silence warnings for gcc 11 and above
-if {[string range ${configure.compiler} 13 end] >= 11} {
-    configure.cflags-append \
+                    -Wno-unused-but-set-variable \
                     -Wno-maybe-uninitialized
-}
-# silence warnings for gcc 12 and above
-if {[string range ${configure.compiler} 13 end] >= 12} {
-    configure.cflags-append \
-                    -Wno-address
-}
 
 # support universal binaries
 if {![info exists universal_possible]} {
