@@ -12,7 +12,7 @@ function print_usage ()
   printf "      user: is the tvheadend administrator account\n"
   printf "  password: is the administrator account password\n"
   printf "   network: is the tvheadend network to use (created with: \"Configuration->DVB Inputs->Network->Add\")\n"
-  printf "        id: is the HDHomeRun Prime deviceID (found by: \"hdhomerun_config discover\")\n"
+  printf "        id: is the HDHomeRun Prime deviceID (found by: \"hdhomerun_config discover -4 --dedupe\")\n"
   printf "  json-obj: optional json object(s) (see: https://github.com/dave-p/TVH-API-docs/wiki/mpegts#mpegtsmuxgrid)\n\n"
   printf "Examples:\n\n"
   printf "   addmuxes \"http://localhost:9981\" \"myacct\" \"mypasswd\" \"network\" \"1234ABCD\"\n"
@@ -61,7 +61,7 @@ fi
 
 # Get a list of channel numbers from the CableCARD
 _LINEUP=$( \
-  curl -sS "http://api.hdhomerun.com/discover" | \
+  curl -sS "https://ipv4-api.hdhomerun.com/discover" -sS "https://ipv6-api.hdhomerun.com/discover" | \
   jq ".[] | select(.DeviceID == \"${_DEVICE}\") | .LineupURL" | \
   tr -d \")
 
