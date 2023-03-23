@@ -10,8 +10,8 @@ PortGroup           muniversal 1.0
 # clock_gettime was not implemented before macOS Sierra
 legacysupport.newest_darwin_requires_legacy 15
 
-set tvh_commit      9e1eb89be731ffb4687327c09b2de3bf58f548cf
-set tvh_commit_date 20230313
+set tvh_commit      21a5c6399aaba600886f1bc1ad0ce79d454b8ba8
+set tvh_commit_date 20230322
 set tvh_version     ${tvh_commit_date}-[string range ${tvh_commit} 0 7]
 
 github.setup        tvheadend tvheadend ${tvh_commit}
