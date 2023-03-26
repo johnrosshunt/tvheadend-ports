@@ -4,7 +4,7 @@ PortSystem          1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20230303
+version             20230323
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
@@ -23,9 +23,9 @@ if {${name} eq ${subport}} {
     extract.suffix      .tgz
     extract.only        ${distname}${extract.suffix}
     worksrcdir          libhdhomerun
-    checksums           rmd160  cb1231ffe66177e17a4eb0cebd22c242af9eb394 \
-                        sha256  7e872558f42818b1cd2f0ba0a0c6613315c4656b484fd2906d0b8f3ce7e0711a \
-                        size    62682
+    checksums           rmd160  c2556da41575cb14097684f182e220fef11f962f \
+                        sha256  4f599c4f774c7accfc78fe07a2d492f2352c7b5ed9aa03f39b74f39c937b96e6 \
+                        size    62755
     universal_variant   yes
 
     patchfiles          patch-01-Makefile-${version}.diff
