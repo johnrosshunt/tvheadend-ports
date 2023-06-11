@@ -16,7 +16,7 @@ rsync://rsync.macports.org/macports/release/tarballs/ports.tar [default]
 
 ```code
 +perl5_34
-+python310
++python311
 +nonfree
 ```
 

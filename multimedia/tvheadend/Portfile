@@ -46,8 +46,8 @@ patchfiles-append   0001-Makefile.patch \
                     0009-git-CVE-2022-24765.patch
 
 # python versions
-set cur_branch      3.10
-set cur_version     310
+set cur_branch      3.11
+set cur_version     311
 
 post-patch {
     foreach f [concat ${worksrcpath}/support/tvhmeta \
