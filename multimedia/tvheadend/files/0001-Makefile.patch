@@ -1,10 +1,10 @@
--z is an unknown option for ld on MacOS
+-z is a nonexistent option for ld on MacOS
 
 diff --git a/Makefile b/Makefile
-index 4e5a947a3..aeba57cf3 100644
+index c4aeab5d5..ba591c183 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -65,7 +65,9 @@ endif
+@@ -63,7 +63,9 @@ endif
  ifeq ($(CONFIG_PIE),yes)
  LDFLAGS += -pie
  endif

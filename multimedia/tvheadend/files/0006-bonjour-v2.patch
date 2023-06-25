@@ -34,10 +34,10 @@ index ac710fda8..d18fe9e75 100644
  
  static void
 diff --git a/src/tvheadend.h b/src/tvheadend.h
-index 072391d3e..347013b19 100644
+index 8a7965235..1712aace4 100644
 --- a/src/tvheadend.h
 +++ b/src/tvheadend.h
-@@ -338,6 +338,12 @@ void tvh_qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void
+@@ -340,6 +340,12 @@ void tvh_qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void
  #define PRItime_t       "ld"
  #endif
  

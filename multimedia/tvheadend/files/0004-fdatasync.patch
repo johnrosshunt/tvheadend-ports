@@ -1,10 +1,10 @@
 fdatasync on MacOS is undocumented and appears to have a different
-set of parameters than BSD/Linux systems. This is why we get an
-implicit reference error when CONFIG_FDATASYNC is defined.
+set of parameters from BSD/Linux systems. This causes implicit
+reference errors when CONFIG_FDATASYNC is defined.
 
 I think the sensible solution is avoid definition checks and call
-fcntl (as Apple recommands) because what fdatasync does on Darwin
-is unknown.
+fcntl (as Apple recommands) because what fdatasync on MacOS really
+does is unknown.
 
 See:
 
