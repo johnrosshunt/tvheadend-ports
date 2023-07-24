@@ -4,7 +4,7 @@ PortSystem          1.0
 
 name                hdhomerun-devel
 conflicts           hdhomerun
-version             20230505
+version             20230719
 categories          net multimedia
 platforms           darwin
 license             LGPL-3+
